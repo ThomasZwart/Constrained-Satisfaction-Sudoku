@@ -13,7 +13,8 @@ namespace Constrained_Satisfaction_Sudoku
         public HashSet<Tuple<int, int>> fixedNumbers;
         public HashSet<Tuple<Tuple<int, int>, Tuple<int, int>>> constraintSet;
         public int domainCounter;
-
+        public List<Tuple<Tuple<int, int>, int>> mcvList;
+        
         public Sudoku(int[,] _sudoku)
         {
             grid = _sudoku;
@@ -21,18 +22,13 @@ namespace Constrained_Satisfaction_Sudoku
             SetFixedNumbers();
             InstantiateDomains();
             InstantiateConstraintSet();
-            DomainReduction();
+            SortVariablesMCV();
         }
 
-        public void DomainReduction()
+        // For the clone
+        public Sudoku()
         {
-            for (int row = 0; row < Length; row++)
-            {
-                for (int column = 0; column < Length; column++)
-                {
-                    
-                }
-            }
+            domainCounter = 0;
         }
 
         public bool IsPartialSolution(Tuple<int, int> variable)
@@ -48,6 +44,19 @@ namespace Constrained_Satisfaction_Sudoku
                 }
             }
             return true;
+        }
+
+        public void SortVariablesMCV()
+        {
+            mcvList = new List<Tuple<Tuple<int, int>, int>>();
+            for (int i = 0; i < Length; i++)
+            {
+                for (int j = 0; j < Length; j++)
+                {
+                    mcvList.Add(new Tuple<Tuple<int, int>, int>(new Tuple<int, int>(i, j), domains[i, j].Count));
+                }
+            }
+            mcvList.Sort((x, y) => x.Item2.CompareTo(y.Item2));
         }
 
         public Tuple<int, int> FirstEmptyVariable()
@@ -78,7 +87,7 @@ namespace Constrained_Satisfaction_Sudoku
 
                     for (int row = blockIndexRow; row < blockIndexRow + blockLength; row++)
                     {
-                        for (int column = blockIndexColumn; column < blockIndexColumn + blockLength; column++)
+                        for (int column = blockIndexColumn; column < blockIndexColumn + blockLength; column++) // All numbers in a block
                         {
                             if (!fixedNumbers.Contains(new Tuple<int, int>(row, column)))
                             {
@@ -86,6 +95,12 @@ namespace Constrained_Satisfaction_Sudoku
                                 {
                                     for (int x = blockIndexColumn; x < blockIndexColumn + blockLength; x++)
                                     {
+                                        // Domain reduction
+                                        if (grid[y,x] != 0)
+                                        {
+                                            domains[row, column].Remove(grid[y, x]);
+                                        }
+                                        // Constraint set
                                         if (!(row == y && x == column))
                                         {
                                             constraintSet.Add(new Tuple<Tuple<int, int>, Tuple<int, int>>(new Tuple<int, int>(row, column), new Tuple<int, int>(y, x)));
@@ -106,18 +121,22 @@ namespace Constrained_Satisfaction_Sudoku
                     {
                         for (int i = 0; i < Length; i++)
                         {
+                            // Domain reduction
+                            if (grid[row, i] != 0)
+                                domains[row, column].Remove(grid[row, i]);
+
                             if (i != column)
-                            {
                                 constraintSet.Add(new Tuple<Tuple<int, int>, Tuple<int, int>>(new Tuple<int, int>(row, column), new Tuple<int, int>(row, i)));
-                            }
                         }
 
                         for (int i = 0; i < Length; i++)
                         {
+                            // Domain reduction
+                            if (grid[i, column] != 0)
+                                domains[row, column].Remove(grid[i, column]);
+
                             if (i != row)
-                            {
                                 constraintSet.Add(new Tuple<Tuple<int, int>, Tuple<int, int>>(new Tuple<int, int>(row, column), new Tuple<int, int>(i, column)));
-                            }
                         }
                     }
                 }
@@ -133,7 +152,7 @@ namespace Constrained_Satisfaction_Sudoku
                 {
                     if (!fixedNumbers.Contains(new Tuple<int, int>(i, j)))
                     {
-                        domains[i, j] = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9};
+                        domains[i, j] = Enumerable.Range(1, Length).ToList();
                     }
                     else
                     {
@@ -145,13 +164,14 @@ namespace Constrained_Satisfaction_Sudoku
 
         public Sudoku Clone() // Clones the current sudoku
         {
-            // The grid cloned
-            Sudoku clone = new Sudoku(grid.Clone() as int[,])
+            Sudoku clone = new Sudoku
             {
-                fixedNumbers = new HashSet<Tuple<int, int>>(fixedNumbers)
-
+                fixedNumbers = new HashSet<Tuple<int, int>>(fixedNumbers),
+                grid = grid.Clone() as int[,],
+                constraintSet = new HashSet<Tuple<Tuple<int, int>, Tuple<int, int>>>(constraintSet),
+                domains = new List<int>[Length, Length],
+                mcvList = new List<Tuple<Tuple<int, int>, int>>(mcvList)
             };
-            clone.domainCounter = domainCounter;
             for (int i = 0; i < Length; i++)
             {
                 for (int j = 0; j < Length; j++)
@@ -159,8 +179,7 @@ namespace Constrained_Satisfaction_Sudoku
                     clone.domains[i, j] = new List<int>(domains[i, j]);
                 }
             }
-            clone.constraintSet = new HashSet<Tuple<Tuple<int, int>, Tuple<int, int>>>(constraintSet);
-
+           
             return clone;
         }
 

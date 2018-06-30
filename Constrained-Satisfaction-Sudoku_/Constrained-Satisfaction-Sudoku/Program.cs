@@ -14,15 +14,54 @@ namespace Constrained_Satisfaction_Sudoku
             Sudoku sudoku = new Sudoku(input);
             Console.WriteLine();
 
-            Sudoku newSudoku = ChronologicalBacktracking(sudoku);
+            Sudoku newSudoku = ChronologicalBacktrackingWithHeuristic(sudoku);
             newSudoku.WriteSudoku();
-
 
             Console.ReadLine();            
         }
 
+        static private Sudoku ChronologicalBacktrackingWithHeuristic(Sudoku sudoku)
+        {
+            Stack<Sudoku> stack = new Stack<Sudoku>();
+            stack.Push(sudoku);
+
+            while (stack.Count != 0)
+            {
+                int count = sudoku.domainCounter;
+
+                Sudoku newSudoku = sudoku.Clone();
+
+                if (newSudoku.FirstEmptyVariable() == null)
+                {
+                    break;
+                }
+                // Generate successor
+                Tuple<int, int> newVariable = newSudoku.mcvList[0].Item1;
+                newSudoku.mcvList.Remove(newSudoku.mcvList[0]);
+                List<int> variableDomain = newSudoku.domains[newVariable.Item1, newVariable.Item2];
+                newSudoku.grid[newVariable.Item1, newVariable.Item2] = variableDomain[count];
+                stack.Push(newSudoku);
+
+                sudoku.domainCounter++; // Domain counter goes up
+
+                // Failed partial solution
+                if (!newSudoku.IsPartialSolution(newVariable))
+                {
+                    stack.Pop();
+                }
+
+                // Backtrack step
+                if (sudoku.domainCounter >= variableDomain.Count)
+                {
+                    sudoku = stack.Pop();
+                }
+            }
+            return sudoku;
+        }
+
         static private Sudoku ChronologicalBacktracking(Sudoku sudoku)
         {
+
             Stack<Sudoku> stack = new Stack<Sudoku>();
             stack.Push(sudoku);
 
@@ -37,7 +76,6 @@ namespace Constrained_Satisfaction_Sudoku
                     break;
                 }
                 // Generate successor
-                newSudoku.domainCounter = 0;
                 Tuple<int, int> newVariable = newSudoku.FirstEmptyVariable();
                 List<int> variableDomain = newSudoku.domains[newVariable.Item1, newVariable.Item2];
                 newSudoku.grid[newVariable.Item1, newVariable.Item2] = variableDomain[count];
