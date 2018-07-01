@@ -47,8 +47,8 @@ namespace Constrained_Satisfaction_Sudoku
         
         // Clears the mcv list and fills it with the updated domains by forward checking
         public void UpdateMCVList()
-        {
-            // List consists of tuples of (location, number of domainelements)            
+        {          
+            // Clears the mcv list
             mcvList.Clear();
             for (int i = 0; i < Length; i++)
             {
