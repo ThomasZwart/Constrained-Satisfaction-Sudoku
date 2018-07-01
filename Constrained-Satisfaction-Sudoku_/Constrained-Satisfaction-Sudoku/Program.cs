@@ -81,21 +81,92 @@ namespace Constrained_Satisfaction_Sudoku
         // Forward checking algorithm
         static private Tuple<Sudoku, int> ForwardChecking(Sudoku sudoku)
         {
-            // Expansion counter
             int expansionCount = 0;
             Stack<Sudoku> stack = new Stack<Sudoku>();
-            // Initial push
             stack.Push(sudoku);
-            // Set to keep track of changes
-            HashSet<Tuple<Tuple<List<int>, Tuple<int, int>>, Sudoku>> moderations = new HashSet<Tuple<Tuple<List<int>, Tuple<int, int>>, Sudoku>>();
             Sudoku newSudoku = sudoku.Clone();
 
             while (!sudoku.IsSolution())
             {
                 newSudoku = sudoku.Clone();
+                bool alreadyPopped = false;
 
-                // Get new variable, first empty one
+                // Generate and push successor
                 Tuple<int, int> newVariable = newSudoku.EmptyVariable(0);
+                List<int> domain = newSudoku.domains[newVariable.Item1, newVariable.Item2];
+
+                newSudoku[newVariable.Item1, newVariable.Item2] = domain[sudoku.domainCounter];
+
+                if (newSudoku.IsPartialSolution(newVariable))
+                    stack.Push(newSudoku);
+
+                // Domain counter goes up
+                sudoku.domainCounter++;
+                expansionCount++;
+
+                /* 
+                Update constraints where this sudoku is a part of.
+                Find all constraints that should be updated and update them
+                check all constraints in constraintset.
+                If V_i has value, get all constraints C_ji where V_j not instantiated, and make them consistent.
+                */
+                foreach (Tuple<Tuple<int, int>, Tuple<int, int>> constraint in newSudoku.constraintSet)
+                {
+                    if (constraint.Item2.Equals(newVariable))
+                    {
+                        // If V_j is not fixed (not instantiated)
+
+                        if (!newSudoku.fixedNumbers.Contains(new Tuple<int, int>(constraint.Item1.Item1, constraint.Item1.Item2)))
+                        {
+                            // Remove the value of V_i from domains of V_j
+                            newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2].Remove(domain[newSudoku.domainCounter]);
+
+                            // If new domain of a location is empty, it should step back.
+                            // Problem with double backtrack step (if also sudoku.domaincounter >= domain.count), therefor we added extra check at backtrack step
+                            if (newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2].Count == 0)
+                            {
+                                // Get previous sudoku
+                                sudoku = stack.Pop();
+                                Console.WriteLine("empty domain, step back to previous sudoku");
+                                // Set alreadyPopped to true, so we don't pop twice.
+                                alreadyPopped = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Backtrack step (make sure stack isn't popped yet)
+                if (sudoku.domainCounter >= domain.Count && alreadyPopped == false)
+                {
+                    sudoku = stack.Pop();
+                    Console.WriteLine("backtrack-step");
+                }
+
+            }
+            return new Tuple<Sudoku, int>(sudoku, expansionCount);
+        }
+
+        // Forward checking algorithm
+        static private Tuple<Sudoku, int> ForwardCheckingWithHeuristic(Sudoku sudoku)
+        {
+            int expansionCount = 0;
+            Stack<Sudoku> stack = new Stack<Sudoku>();
+            stack.Push(sudoku);
+            Sudoku newSudoku = sudoku.Clone();
+
+            while (!sudoku.IsSolution())
+            {
+                newSudoku = sudoku.Clone();
+                bool alreadyPopped = false;
+
+                // Update (dynamic) mcv list (inherent)
+                newSudoku.UpdateMCVList();
+
+                // Generate and push successor using mcvList
+                // Get new variable, first one in the mcv list
+                Tuple<int, int> newVariable = newSudoku.mcvList[0].Item1;
+                // Remove so that variables get looped through
                 List<int> domain = newSudoku.domains[newVariable.Item1, newVariable.Item2];
 
                 newSudoku[newVariable.Item1, newVariable.Item2] = domain[sudoku.domainCounter];
@@ -108,46 +179,45 @@ namespace Constrained_Satisfaction_Sudoku
                 sudoku.domainCounter++;
                 expansionCount++;
 
-                //update constraints where this sudoku is a part of. possible, but how to undo them?
-                //if we keep an hashset with Tuple<TUple<Domainlist, location>, Sudoku>
-                //so we keep a tuple of old domain for each location that is changed by the new variable in the sudoku.
-                //for instance. we try value 2 for Variable. it has constraint with Location. Location has domain{1,2,3}. we store this combination in tpule with Variable. <<OldDomain, Location>, Variable> and update domain to {1,3}.
-                //if further on, we have to pop Sudoku with changed Variable from stack, because value 2 doesn't work, we pop it from stack (and retrieve it), we search hashSet for the sudoku and for each value in the hashset we update the OldDomains to the location (so we are back at original before updating domains).
-
-                //find all constraints that should be updated and update them
-                //check all constraints in constraintset.
-                //if V_i has value, get all constraints C_ji where V_j not instantiated, and make them consistent.
-
-                //!!!do we have double constraints? --> do we have to check for C_ij to? or does update on just C_ji updates all necessary domains??/
+                /* 
+                Update constraints where this sudoku is a part of.
+                Find all constraints that should be updated and update them
+                check all constraints in constraintset.
+                If V_i has value, get all constraints C_ji where V_j not instantiated, and make them consistent.
+                */
                 foreach (Tuple<Tuple<int, int>, Tuple<int, int>> constraint in newSudoku.constraintSet)
                 {
                     if (constraint.Item2.Equals(newVariable))
                     {
-                        //if domain of V_j is not 1 (not instantiated)
-                        if (newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2].Count != 1)
+                        // If V_j is not fixed(not instantiated)
+
+                        if (!newSudoku.fixedNumbers.Contains(new Tuple<int, int>(constraint.Item1.Item1, constraint.Item1.Item2)))
                         {
-                            //add to hashset of moderated domains with stored <<OldDomain, locationofDomain>, Sudoku with variable (retrievable from stack)>
-
-                            //***
-                            //moderations.Add(new Tuple<Tuple<List<int>, Tuple<int, int>>, Sudoku>(new Tuple<List<int>, Tuple<int, int>>(newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2], newVariable), newSudoku));
-                            //***
-
-                            //remove the value of V_i from domains of V_j
+                            // Remove the value of V_i from domains of V_j
                             newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2].Remove(domain[newSudoku.domainCounter]);
 
-                            //if new domain of a location is empty, it should step back.
-                            //problem with double backtrack step (if also sudoku.domaincounter >= domain.count)
+                            // If new domain of a location is empty, it should step back.
+                            // Problem with double backtrack step (if also sudoku.domaincounter >= domain.count), so we created extra check in backtrack step.
                             if (newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2].Count == 0)
                             {
+                                // Get previous sudoku
                                 sudoku = stack.Pop();
+                                Console.WriteLine("empty domain, step back to previous sudoku");
+                                // Update already popped (to make sure we don't pop twice)
+                                alreadyPopped = true;
+                                break;
                             }
                         }
                     }
                 }
 
-                // Backtrack step
-                if (sudoku.domainCounter >= domain.Count)
+                // Backtrack step (make sure stack isn't popped yet)
+                if (sudoku.domainCounter >= domain.Count && alreadyPopped == false)
+                {
                     sudoku = stack.Pop();
+                    Console.WriteLine("backtrack-step");
+                }
+
             }
             return new Tuple<Sudoku, int>(sudoku, expansionCount);
         }
