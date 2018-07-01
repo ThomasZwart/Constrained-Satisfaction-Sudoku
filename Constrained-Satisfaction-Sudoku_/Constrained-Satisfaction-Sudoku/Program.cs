@@ -69,37 +69,98 @@ namespace Constrained_Satisfaction_Sudoku
                         {
                             Console.WriteLine("not implemented");
                             break;
-                        }
-                    
+                        }                   
                 }
                 Console.WriteLine();
             }
         }
 
-        static public Sudoku NextSuccessor(Sudoku sudoku)
+        //forward checking algorithm
+        static private Tuple<Sudoku, int> ForwardChecking(Sudoku sudoku)
         {
-            Sudoku newSudoku = sudoku.Clone();
-            
-            // Get new variable
-            Tuple<int, int> newVariable = newSudoku.EmptyVariable(0);
+            int expansionCount = 0;
+            Stack<Sudoku> stack = new Stack<Sudoku>();
+            stack.Push(sudoku);
+            HashSet<Tuple<Tuple<List<int>, Tuple<int, int>>, Sudoku>> moderations = new HashSet<Tuple<Tuple<List<int>, Tuple<int, int>>, Sudoku>>();
 
-            // The domain of that variable
-            List<int> domain = newSudoku.domains[newVariable.Item1, newVariable.Item2];
-
-            // New sudoku with initiated variable
-            newSudoku.grid[newVariable.Item1, newVariable.Item2] = domain[sudoku.domainCounter];
-
-            sudoku.domainCounter++;
-
-            if (sudoku.domainCounter >= domain.Count)
+            while (stack.Count != 0)
             {
-                sudoku.domainCounter = 0;
-                return null;
+                int count = sudoku.domainCounter;
+
+                Sudoku newSudoku = sudoku.Clone();
+
+                //if sudoku completely filled
+                if (newSudoku.EmptyVariable(0) == null)
+                {
+                    break;
+                }
+
+                // Generate successor
+                Tuple<int, int> newVariable = newSudoku.EmptyVariable(0);
+                List<int> variableDomain = newSudoku.domains[newVariable.Item1, newVariable.Item2];
+                newSudoku[newVariable.Item1, newVariable.Item2] = variableDomain[count];
+                stack.Push(newSudoku);
+
+                //update constraints where this sudoku is a part of. possible, but how to undo them?
+                //if we keep an hashset with Tuple<TUple<Domainlist, location>, Sudoku>
+                //so we keep a tuple of old domain for each location that is changed by the new variable in the sudoku.
+                //for instance. we try value 2 for Variable. it has constraint with Location. Location has domain{1,2,3}. we store this combination in tpule with Variable. <<OldDomain, Location>, Variable> and update domain to {1,3}.
+                //if further on, we have to pop Sudoku with changed Variable from stack, because value 2 doesn't work, we pop it from stack (and retrieve it), we search hashSet for the sudoku and for each value in the hashset we update the OldDomains to the location (so we are back at original before updating domains).
+
+
+
+                //find all constraints that should be updated and update them
+                //check all constraints in constraintset.
+                //if V_i has value, get all constraints C_ji where V_j not instantiated, and make them consistent.
+
+                //!!!do we have double constraints? --> do we have to check for C_ij to? or does update on just C_ji updates all necessary domains??/
+                foreach (Tuple<Tuple<int, int>, Tuple<int, int>> constraint in newSudoku.constraintSet)
+                {
+                    if (constraint.Item2.Equals(newVariable))
+                    {
+                        //if domain of V_j is not 1 (not instantiated)
+                        if (newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2].Count != 1)
+                        {
+                            //add to hashset of moderated domains with stored <<OldDomain, locationofDomain>, Sudoku with variable (retrievable from stack)>
+
+
+                            //***
+                            moderations.Add(new Tuple<Tuple<List<int>, Tuple<int, int>>, Sudoku>(new Tuple<List<int>, Tuple<int, int>>(newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2], newVariable), newSudoku));
+                            //***
+
+                            //remove the value of V_i from domains of V_j
+                            newSudoku.domains[constraint.Item1.Item1, constraint.Item1.Item2].Remove(variableDomain[count]);
+                        }
+                    }
+
+                    sudoku.domainCounter++; // Domain counter goes up
+                    expansionCount++; //you have expanded a node (with next if loop)
+
+                }
+                // Failed partial solution
+                if (!newSudoku.IsPartialSolution(newVariable))
+                {
+                    Sudoku badSudoku = stack.Pop();
+                    foreach (Tuple<Tuple<List<int>, Tuple<int, int>>, Sudoku> moderation in moderations)
+                    {
+                        //write own equals
+                        if (moderation.Item2.Equals(badSudoku))
+                        {
+                            //
+                            //moderation.
+                            //
+                        }
+                    }
+                }
+
+                // Backtrack step
+                if (sudoku.domainCounter >= variableDomain.Count)
+                {
+                    sudoku = stack.Pop();
+                }
             }
-            if (newSudoku.IsPartialSolution(newVariable))
-                return newSudoku;
-            else
-                return null;
+
+            return null;
         }
 
 
