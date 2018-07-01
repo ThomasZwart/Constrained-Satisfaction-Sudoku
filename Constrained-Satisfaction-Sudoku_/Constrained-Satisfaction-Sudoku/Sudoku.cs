@@ -20,7 +20,7 @@ namespace Constrained_Satisfaction_Sudoku
             SetFixedNumbers();
             InstantiateDomains();
             InstantiateConstraintSet();
-            SortVariablesMCV();
+            InitMCVList();
         }
 
         // For the clone, so there is no unneccesarily initialization every time a clone is made
@@ -44,11 +44,29 @@ namespace Constrained_Satisfaction_Sudoku
             }
             return true;
         }
+        
+        // Clears the mcv list and fills it with the updated domains by forward checking
+        public void UpdateMCVList()
+        {
+            // List consists of tuples of (location, number of domainelements)            
+            mcvList.Clear();
+            for (int i = 0; i < Length; i++)
+            {
+                for (int j = 0; j < Length; j++)
+                {
+                    //add all locations with the right number domain elements
+                    mcvList.Add(new Tuple<Tuple<int, int>, int>(new Tuple<int, int>(i, j), domains[i, j].Count));
+                }
+            }
+            // Sort using inherent sort method with overwrited CompareTo to deal with tuples.
+            mcvList.Sort((x, y) => x.Item2.CompareTo(y.Item2));
+        }
+
 
         // Sort variables by domain size for the most constrained variable heuristic
-        public void SortVariablesMCV()
+        public void InitMCVList()
         {
-            //list consists of tuples of (location, number of domainelements)
+            // List consists of tuples of (location, number of domainelements)            
             mcvList = new List<Tuple<Tuple<int, int>, int>>();
             for (int i = 0; i < Length; i++)
             {
@@ -58,7 +76,7 @@ namespace Constrained_Satisfaction_Sudoku
                     mcvList.Add(new Tuple<Tuple<int, int>, int>(new Tuple<int, int>(i, j), domains[i, j].Count));
                 }
             }
-            //sort using inherent sort method with Overwrited CompareTo to deal with tuples.
+            // Sort using inherent sort method with overwrited CompareTo to deal with tuples.
             mcvList.Sort((x, y) => x.Item2.CompareTo(y.Item2));
         }
 
