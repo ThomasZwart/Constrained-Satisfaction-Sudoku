@@ -9,12 +9,12 @@ namespace Constrained_Satisfaction_Sudoku
     class Sudoku
     {
         public int[,] grid;
+        public int domainCounter;
         public List<int>[,] domains;
+        public List<Tuple<Tuple<int, int>, int>> mcvList;
         public HashSet<Tuple<int, int>> fixedNumbers;
         public HashSet<Tuple<Tuple<int, int>, Tuple<int, int>>> constraintSet;
-        public int domainCounter;
-        public List<Tuple<Tuple<int, int>, int>> mcvList;
-        
+              
         public Sudoku(int[,] _sudoku)
         {
             grid = _sudoku;
@@ -46,6 +46,7 @@ namespace Constrained_Satisfaction_Sudoku
             return true;
         }
 
+        // Sort variables by domain size for the most constrained variable heuristic
         public void SortVariablesMCV()
         {
             mcvList = new List<Tuple<Tuple<int, int>, int>>();
@@ -53,31 +54,72 @@ namespace Constrained_Satisfaction_Sudoku
             {
                 for (int j = 0; j < Length; j++)
                 {
-                    mcvList.Add(new Tuple<Tuple<int, int>, int>(new Tuple<int, int>(i, j), domains[i, j].Count));
+                    // Add Tuple of (Coördinate, domain size)
+                    if (!fixedNumbers.Contains(new Tuple<int, int>(i, j)))
+                    {
+                        mcvList.Add(new Tuple<Tuple<int, int>, int>(new Tuple<int, int>(i, j), domains[i, j].Count));
+                    }          
                 }
             }
+            // Sort the list
             mcvList.Sort((x, y) => x.Item2.CompareTo(y.Item2));
         }
 
-        public Tuple<int, int> FirstEmptyVariable()
+        public int AmountEmptyVariables()
         {
+            int counter = 0;
             for (int i = 0; i < Length; i++)
             {
                 for (int j = 0; j < Length; j++)
                 {
                     if (grid[i, j] == 0)
                     {
-                        return new Tuple<int, int>(i, j);
+                        counter++;
+                    }
+                }
+            }
+            return counter;
+        }
+
+        // Returns the first empty variable (without any heuristic)
+        public Tuple<int, int> EmptyVariable(int number)
+        {
+            int counter = 0;
+            for (int i = 0; i < Length; i++)
+            {
+                for (int j = 0; j < Length; j++)
+                {
+                    if (grid[i, j] == 0)
+                    {
+                        counter++;
+                        if (counter > number)
+                            return new Tuple<int, int>(i, j);
                     }
                 }
             }
             return null;
+        }
+        public bool IsSolution()
+        {
+            if (AmountEmptyVariables() == 0)
+            {
+                foreach (Tuple<Tuple<int, int>, Tuple<int, int>> constraint in constraintSet)
+                {
+                    if (grid[constraint.Item1.Item1, constraint.Item1.Item2] == grid[constraint.Item2.Item1, constraint.Item2.Item2])
+                        return false;
+                }
+                return true;
+            }
+            else
+                return false;
         }
 
         private void InstantiateConstraintSet()
         {
             constraintSet = new HashSet<Tuple<Tuple<int, int>, Tuple<int, int>>>();
             int blockLength = (int)Math.Sqrt(Length);
+
+            // For every block
             for (int blockRow = 0; blockRow < blockLength; blockRow++)
             {
                 for (int blockColumn = 0; blockColumn < blockLength; blockColumn++)
@@ -85,9 +127,10 @@ namespace Constrained_Satisfaction_Sudoku
                     int blockIndexRow = blockRow * blockLength;
                     int blockIndexColumn = blockColumn * blockLength;
 
+                    // All variables in the block
                     for (int row = blockIndexRow; row < blockIndexRow + blockLength; row++)
-                    {
-                        for (int column = blockIndexColumn; column < blockIndexColumn + blockLength; column++) // All numbers in a block
+                    {                    
+                        for (int column = blockIndexColumn; column < blockIndexColumn + blockLength; column++) 
                         {
                             if (!fixedNumbers.Contains(new Tuple<int, int>(row, column)))
                             {
@@ -100,7 +143,7 @@ namespace Constrained_Satisfaction_Sudoku
                                         {
                                             domains[row, column].Remove(grid[y, x]);
                                         }
-                                        // Constraint set
+                                        // Set block constraints
                                         if (!(row == y && x == column))
                                         {
                                             constraintSet.Add(new Tuple<Tuple<int, int>, Tuple<int, int>>(new Tuple<int, int>(row, column), new Tuple<int, int>(y, x)));
@@ -125,6 +168,7 @@ namespace Constrained_Satisfaction_Sudoku
                             if (grid[row, i] != 0)
                                 domains[row, column].Remove(grid[row, i]);
 
+                            // Set horizontal constrains
                             if (i != column)
                                 constraintSet.Add(new Tuple<Tuple<int, int>, Tuple<int, int>>(new Tuple<int, int>(row, column), new Tuple<int, int>(row, i)));
                         }
@@ -135,6 +179,7 @@ namespace Constrained_Satisfaction_Sudoku
                             if (grid[i, column] != 0)
                                 domains[row, column].Remove(grid[i, column]);
 
+                            // Set vertical constraints
                             if (i != row)
                                 constraintSet.Add(new Tuple<Tuple<int, int>, Tuple<int, int>>(new Tuple<int, int>(row, column), new Tuple<int, int>(i, column)));
                         }
@@ -156,13 +201,14 @@ namespace Constrained_Satisfaction_Sudoku
                     }
                     else
                     {
-                        domains[i, j] = new List<int> { grid[i, j]};
+                        domains[i, j] = new List<int> {grid[i, j]};
                     }
                 }
             }
         }
 
-        public Sudoku Clone() // Clones the current sudoku
+        // Clones the current sudoku
+        public Sudoku Clone() 
         {
             Sudoku clone = new Sudoku
             {
@@ -178,19 +224,19 @@ namespace Constrained_Satisfaction_Sudoku
                 {
                     clone.domains[i, j] = new List<int>(domains[i, j]);
                 }
-            }
-           
+            }         
             return clone;
         }
 
-        public int this[int index1, int index2] // Used to access the grid variable easily
+        // Used to access the grid variable easily
+        public int this[int index1, int index2] 
         {
             get { return grid[index1, index2]; }
-
             set { grid[index1, index2] = value; }
         }
 
-        public void SetFixedNumbers() // Sets all numbers that aren't blank as fixed numbers in the sudoku based on their indices                                                   
+        // Sets all numbers that aren't blank as fixed numbers in the sudoku based on their indices        
+        public void SetFixedNumbers()                                            
         {
             fixedNumbers = new HashSet<Tuple<int, int>>();
             for (int i = 0; i < Length; i++)
@@ -199,19 +245,20 @@ namespace Constrained_Satisfaction_Sudoku
                 {
                     if (grid[i, j] != 0)
                     {
-                        fixedNumbers.Add(new Tuple<int, int>(i, j)); // Tuple of (row, column) coordinates in the grid
+                        // Tuple of (row, column) coordinates in the grid
+                        fixedNumbers.Add(new Tuple<int, int>(i, j)); 
                     }
                 }
             }
         }
 
-
-        public int Length // The length of the sudoku
+        // The length of the sudoku
+        public int Length 
         {
             get { return grid.GetLength(0); }
         }
 
-
+        // Method to write the sudoku out in console
         public void WriteSudoku()
         {
             for (int i = 0; i < Length; i++)
