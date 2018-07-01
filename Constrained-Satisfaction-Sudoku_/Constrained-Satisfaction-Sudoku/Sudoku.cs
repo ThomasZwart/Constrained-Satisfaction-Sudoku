@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Constrained_Satisfaction_Sudoku
 {
@@ -25,12 +23,13 @@ namespace Constrained_Satisfaction_Sudoku
             SortVariablesMCV();
         }
 
-        // For the clone
+        // For the clone, so there is no unneccesarily initialization every time a clone is made
         public Sudoku()
         {
             domainCounter = 0;
         }
 
+        // Check to see if a sudoku is a partial solution with respect to a variable (for efficiency)
         public bool IsPartialSolution(Tuple<int, int> variable)
         {
             foreach (Tuple<Tuple<int, int>, Tuple<int, int>> constraint in constraintSet)
@@ -49,22 +48,21 @@ namespace Constrained_Satisfaction_Sudoku
         // Sort variables by domain size for the most constrained variable heuristic
         public void SortVariablesMCV()
         {
+            //list consists of tuples of (location, number of domainelements)
             mcvList = new List<Tuple<Tuple<int, int>, int>>();
             for (int i = 0; i < Length; i++)
             {
                 for (int j = 0; j < Length; j++)
                 {
-                    // Add Tuple of (Coördinate, domain size)
-                    if (!fixedNumbers.Contains(new Tuple<int, int>(i, j)))
-                    {
-                        mcvList.Add(new Tuple<Tuple<int, int>, int>(new Tuple<int, int>(i, j), domains[i, j].Count));
-                    }          
+                    //add all locations with the right number domain elements
+                    mcvList.Add(new Tuple<Tuple<int, int>, int>(new Tuple<int, int>(i, j), domains[i, j].Count));
                 }
             }
-            // Sort the list
+            //sort using inherent sort method with Overwrited CompareTo to deal with tuples.
             mcvList.Sort((x, y) => x.Item2.CompareTo(y.Item2));
         }
 
+        // The amount of empty variables
         public int AmountEmptyVariables()
         {
             int counter = 0;
@@ -99,12 +97,15 @@ namespace Constrained_Satisfaction_Sudoku
             }
             return null;
         }
+
+        // Check to see if the sudoku is solved
         public bool IsSolution()
         {
             if (AmountEmptyVariables() == 0)
             {
                 foreach (Tuple<Tuple<int, int>, Tuple<int, int>> constraint in constraintSet)
                 {
+                    // Once a contraint is violated the sudoku isn't solved
                     if (grid[constraint.Item1.Item1, constraint.Item1.Item2] == grid[constraint.Item2.Item1, constraint.Item2.Item2])
                         return false;
                 }
@@ -114,6 +115,7 @@ namespace Constrained_Satisfaction_Sudoku
                 return false;
         }
 
+        // To instantiate the constraint sets and also some domain reduction
         private void InstantiateConstraintSet()
         {
             constraintSet = new HashSet<Tuple<Tuple<int, int>, Tuple<int, int>>>();
@@ -188,6 +190,7 @@ namespace Constrained_Satisfaction_Sudoku
             }
         }
 
+        // Instantiate the domains for all variables
         private void InstantiateDomains()
         {
             domains = new List<int>[Length, Length];
