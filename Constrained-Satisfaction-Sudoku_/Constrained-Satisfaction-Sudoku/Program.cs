@@ -10,15 +10,70 @@ namespace Constrained_Satisfaction_Sudoku
     {
         static void Main()
         {
-            int[,] input = ReadSudoku();
-            Sudoku sudoku = new Sudoku(input);
-            Console.WriteLine();
+            while(true)
+            {
+                int[,] input = ReadSudoku();
+                Sudoku sudoku = new Sudoku(input);
+                Console.WriteLine();
+                Console.WriteLine("Select algorithm: ");
+                Console.WriteLine("   1: Chronological Backtracking");
+                Console.WriteLine("   2: Chronological Backtracking with MCV heuristic");
+                Console.WriteLine("   3: Forward Checking");
+                Console.WriteLine("   4: Forward Checking with MCV heuristic");
+                Console.WriteLine();
 
-            Sudoku newSudoku = ChronologicalBacktrackingWithHeuristic(sudoku);
-            newSudoku.WriteSudoku();
-            Console.WriteLine("Is Solution: " + newSudoku.IsSolution().ToString());
+                //switch for selecting algorithm. in each case, keep time, select algorithm, extract data, stop time and write answers.
+                switch (int.Parse(Console.ReadLine()))
+                {
+                    case 1:
+                        {
+                            long x = DateTime.Now.Ticks;
+                            Tuple<Sudoku, int> answer = ChronologicalBacktracking(sudoku);
+                            Sudoku newSudoku = answer.Item1;
+                            int expansions = answer.Item2;
+                            Console.WriteLine("Time Elapsed (in seconds): " + TimeSpan.FromTicks(DateTime.Now.Ticks - x).TotalSeconds);
+                            Console.WriteLine("Expanded: " + expansions + " vertices");
+                            Console.WriteLine();
+                            newSudoku.WriteSudoku();
+                            break;
+                        }
 
-            Console.ReadLine();            
+                    case 2:
+                        {
+                            long x = DateTime.Now.Ticks;
+                            Tuple<Sudoku, int> answer = ChronologicalBacktrackingWithHeuristic(sudoku);
+                            Sudoku newSudoku = answer.Item1;
+                            int expansions = answer.Item2;
+                            Console.WriteLine("Time Elapsed (in seconds): " + TimeSpan.FromTicks(DateTime.Now.Ticks - x).TotalSeconds);
+                            Console.WriteLine("Expanded: " + expansions + " vertices");
+                            Console.WriteLine();
+                            newSudoku.WriteSudoku();
+                            break;
+                        }
+                    case 3:
+                        {
+                            Console.Write("not implemented");
+
+                            long x = DateTime.Now.Ticks;
+                            Tuple<Sudoku, int> answer = ChronologicalBacktrackingWithHeuristic(sudoku);
+                            Sudoku newSudoku = answer.Item1;
+                            int expansions = answer.Item2;
+                            Console.WriteLine("Time Elapsed (in seconds): " + TimeSpan.FromTicks(DateTime.Now.Ticks - x).TotalSeconds);
+                            Console.WriteLine("Expanded: " + expansions + " vertices");
+                            Console.WriteLine();
+                            newSudoku.WriteSudoku();
+                            break;
+                        }
+
+                    case 4:
+                        {
+                            Console.WriteLine("not implemented");
+                            break;
+                        }
+                    
+                }
+                Console.WriteLine();
+            }
         }
 
         static public Sudoku NextSuccessor(Sudoku sudoku)
@@ -48,8 +103,9 @@ namespace Constrained_Satisfaction_Sudoku
         }
 
 
-        static private Sudoku ChronologicalBacktrackingWithHeuristic(Sudoku sudoku)
+        static private Tuple<Sudoku, int> ChronologicalBacktrackingWithHeuristic(Sudoku sudoku)
         {
+            int expansionCount = 0;
             Stack<Sudoku> stack = new Stack<Sudoku>();
             stack.Push(sudoku);
             Sudoku newSudoku = sudoku.Clone();
@@ -70,16 +126,18 @@ namespace Constrained_Satisfaction_Sudoku
 
                 // Domain counter goes up
                 sudoku.domainCounter++;
+                expansionCount++;
 
                 // Backtrack step
                 if (sudoku.domainCounter >= domain.Count)
                     sudoku = stack.Pop();
             }
-            return sudoku;
+            return new Tuple<Sudoku, int>(sudoku, expansionCount);
         }
 
-        static private Sudoku ChronologicalBacktracking(Sudoku sudoku)
+        static private Tuple<Sudoku, int> ChronologicalBacktracking(Sudoku sudoku)
         {
+            int expansionCount = 0;
             Stack<Sudoku> stack = new Stack<Sudoku>();
             stack.Push(sudoku);
             Sudoku newSudoku = sudoku.Clone();
@@ -99,12 +157,13 @@ namespace Constrained_Satisfaction_Sudoku
 
                 // Domain counter goes up
                 sudoku.domainCounter++;
+                expansionCount++;
 
                 // Backtrack step
                 if (sudoku.domainCounter >= domain.Count)
                     sudoku = stack.Pop();                             
             }
-            return sudoku;
+            return new Tuple<Sudoku, int>(sudoku, expansionCount);
         }
 
         private static int[,] ReadSudoku()
